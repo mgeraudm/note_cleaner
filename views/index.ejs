@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Note Cleaner</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">AI Note Assistant</p>
+          <h1>Clean, organize, and summarize your notes</h1>
+        </div>
+      </header>
+
+      <main class="app-grid">
+        <section class="panel">
+          <div class="panel-top-row">
+            <h2>Paste your notes</h2>
+            <div class="quota-pill">
+              <span id="usageDisplay"><%= usageCount || 0 %></span>
+              /
+              <span><%= DAILY_NOTE_LIMIT %></span>
+              used
+            </div>
+          </div>
+
+          <% if (limitReached) { %>
+            <div class="limit-banner">
+              You have reached the daily limit of <%= DAILY_NOTE_LIMIT %> note transformations. Please come back tomorrow.
+            </div>
+          <% } %>
+
+          <form method="POST" action="/clean-notes" id="noteForm">
+            <div class="counter-wrap">
+              <div class="char-counter">
+                <span id="charCount">0</span>
+                <span>/</span>
+                <span><%= MAX_NOTE_CHARACTERS.toLocaleString() %></span>
+              </div>
+              <div class="char-meter" aria-hidden="true">
+                <span id="charMeterFill"></span>
+              </div>
+            </div>
+
+            <textarea
+              id="notesInput"
+              name="notes"
+              placeholder="Paste notes here..."
+              required
+              maxlength="<%= MAX_NOTE_CHARACTERS %>"
+              <% if (limitReached) { %>disabled<% } %>
+            ><%= notes || "" %></textarea>
+
+            <button type="submit" <% if (limitReached) { %>disabled<% } %>>Clean and organize</button>
+          </form>
+
+          <% if (error) { %>
+            <div class="error-box"><%= error %></div>
+          <% } %>
+        </section>
+
+        <section class="panel results-panel">
+          <h2>AI output</h2>
+
+          <% if (!result) { %>
+            <div class="empty-state">
+              Your cleaned notes, summary, and extracted details will appear here.
+            </div>
+          <% } else { %>
+            <div class="result-group">
+              <h3>Cleaned Notes</h3>
+              <p id="cleanedNotesText"><%= result.cleaned_notes %></p>
+            </div>
+
+            <div class="result-group">
+              <h3>Summary</h3>
+              <p id="summaryText"><%= result.summary %></p>
+            </div>
+
+            <div class="result-group">
+              <h3>Key Names</h3>
+              <ul id="keyNamesList">
+                <% (result.key_names || []).forEach(function(item) { %>
+                  <li><%= item %></li>
+                <% }) %>
+              </ul>
+            </div>
+
+            <div class="result-group">
+              <h3>Key Dates</h3>
+              <ul id="keyDatesList">
+                <% (result.key_dates || []).forEach(function(item) { %>
+                  <li><%= item %></li>
+                <% }) %>
+              </ul>
+            </div>
+
+            <div class="result-group">
+              <h3>Key Tasks</h3>
+              <ul id="keyTasksList">
+                <% (result.key_tasks || []).forEach(function(item) { %>
+                  <li><%= item %></li>
+                <% }) %>
+              </ul>
+            </div>
+          <% } %>
+        </section>
+      </main>
+
+      <section class="panel history-panel">
+        <div class="panel-top-row">
+          <h2>Saved note history</h2>
+          <button type="button" class="ghost-button" id="clearHistoryBtn">Clear all</button>
+        </div>
+        <div id="historyList" class="history-list" aria-live="polite"></div>
+      </section>
+    </div>
+
+    <div id="historyModal" class="history-modal hidden" aria-hidden="true">
+      <div class="history-modal-card">
+        <div class="modal-header">
+          <h3>Saved note</h3>
+          <button type="button" class="close-modal" id="closeHistoryModal" aria-label="Close saved note">×</button>
+        </div>
+
+        <div class="modal-section">
+          <h4>Original note</h4>
+          <div id="modalOriginalNote" class="modal-text"></div>
+        </div>
+
+        <div class="modal-section">
+          <h4>Transformed note</h4>
+          <div id="modalTransformedNote" class="modal-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const maxChars = 10000;
+      const maxNotesPerDay = 3;
+
+      const textarea = document.getElementById("notesInput");
+      const charCount = document.getElementById("charCount");
+      const charMeterFill = document.getElementById("charMeterFill");
+      const usageDisplay = document.getElementById("usageDisplay");
+
+      function updateCounters() {
+        if (!textarea) {
+          return;
+        }
+
+        const count = textarea.value.length;
+        const percent = Math.min((count / maxChars) * 100, 100);
+
+        charCount.textContent = count.toLocaleString();
+        charMeterFill.style.width = percent + "%";
+        charMeterFill.style.background = percent >= 100 ? "#e15b5b" : percent >= 75 ? "#ffa94d" : "#4caf50";
+
+        if (usageDisplay) {
+          const currentUsage = Number(usageDisplay.textContent || 0);
+          const quotaText = currentUsage >= maxNotesPerDay ? "limit reached" : `${currentUsage}/${maxNotesPerDay}`;
+          usageDisplay.textContent = quotaText;
+        }
+      }
+
+      if (textarea) {
+        textarea.addEventListener("input", updateCounters);
+        updateCounters();
+      }
+    </script>
+    <script src="/app.js"></script>
+  </body>
+</html>
